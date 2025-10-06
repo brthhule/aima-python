@@ -228,7 +228,7 @@ def compare_algorithms_with_astar(matrices_sizes, rrnn_k, rrnn_repeats):
 #######################################
 # Plot normalized comparison
 #######################################
-def plot_comparison_normalized(stats, output_file="normalized_comparison.png"):
+def plot_comparison_normalized(stats, output_file="experiment2-images/normalized_comparison.png"):
     # Only consider sizes where A* ran
     x = stats['A*']['sizes']
 

@@ -270,10 +270,10 @@ for a in [5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50]:
 
 print("\nHyperparameter tuning...")
 sizes_k, medians_per_k = hyperparameter_sweep_k(matrices_sizes)
-plot_hyperparam_k(sizes_k, medians_per_k, output_file="hyperparam_k.png")
+plot_hyperparam_k(sizes_k, medians_per_k, output_file="experiment1-images/hyperparam_k.png")
 
 sizes_r, medians_per_repeats = hyperparameter_sweep_num_repeats(matrices_sizes)
-plot_hyperparam_repeats(sizes_r, medians_per_repeats, output_file="hyperparam_repeats.png")
+plot_hyperparam_repeats(sizes_r, medians_per_repeats, output_file="experiment1-images/hyperparam_repeats.png")
 
 # Pick best hyperparameters
 best_k = min(medians_per_k, key=lambda kk: medians_per_k[kk])
@@ -284,4 +284,4 @@ print(f"Best num_repeats (by median): {best_r}")
 
 print("\nRunning algorithm comparison...")
 stats = compare_algorithms(matrices_sizes, rrnn_k=best_k, rrnn_repeats=best_r)
-plot_comparison(stats, output_file="comparison_plots.png")
+plot_comparison(stats, output_file="experiment1-images/comparison_plots.png")
