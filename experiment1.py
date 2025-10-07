@@ -6,14 +6,12 @@ from statistics import median
 
 ####################################### Algorithms
 def calculate_cost(graph, tour):
-    """Return total cost of visiting all nodes in 'tour' order."""
     cost = 0
     for i in range(len(tour) - 1):
         cost += graph[tour[i]][tour[i + 1]]
     return cost
 
 def nearest_neighbor(graph, start=0):
-    """Greedy heuristic: always visit nearest unvisited neighbor."""
     n = len(graph)
     visited = [False] * n
     tour = [start]
@@ -74,16 +72,13 @@ def nearest_neighbor_randomized(graph, k=2, start=0):
     return tour, calculate_cost(graph, tour)
 
 def rrnn_with_2opt(graph, k=2, num_repeats=10, start=0):
-    """Run multiple randomized NN tours, refine with 2-opt, return best."""
     best_tour, best_cost = None, float("inf")
-
     for rep in range(num_repeats):
         tour, cost = nearest_neighbor_randomized(graph, k, start)
         tour, cost = two_opt(graph, tour)
         if cost < best_cost:
             best_tour, best_cost = tour, cost
-        print(f"Repeat {rep+1}: Tour {tour}, Cost {cost:.2f}")
-
+        # print(f"Repeat {rep+1}: Tour {tour}, Cost {cost:.2f}")
     return best_tour, best_cost
 
 ####################################### Experiment Helpers
@@ -111,26 +106,30 @@ def time_function(fn, *args, cpu_time_repeat_threshold=0, max_repeats_if_cpu_zer
 
 def hyperparameter_sweep_k(matrices_sizes):
     medians_per_k = {}
-    for k in [1, 2, 3, 4, 5, 7, 10]:
-        scores = []
-        for size, matrices in matrices_sizes.items():
-            for mat in matrices:
+    sizes = sorted(matrices_sizes.keys())
+    for k in [1,2,3,4,5,7,10]:
+        medians_per_size = []
+        for size in sizes:
+            scores = []
+            for mat in matrices_sizes[size]:
                 _, cost = rrnn_with_2opt(mat, k=k, num_repeats=5)
                 scores.append(cost)
-        medians_per_k[k] = median(scores)
-    sizes = sorted(matrices_sizes.keys())
+            medians_per_size.append(median(scores))
+        medians_per_k[k] = medians_per_size
     return sizes, medians_per_k
 
 def hyperparameter_sweep_num_repeats(matrices_sizes):
     medians_per_repeats = {}
-    for r in [1, 2, 5, 10, 20]:
-        scores = []
-        for size, matrices in matrices_sizes.items():
-            for mat in matrices:
+    sizes = sorted(matrices_sizes.keys())
+    for r in [1,2,5,10,20]:
+        medians_per_size = []
+        for size in sizes:
+            scores = []
+            for mat in matrices_sizes[size]:
                 _, cost = rrnn_with_2opt(mat, k=3, num_repeats=r)
                 scores.append(cost)
-        medians_per_repeats[r] = median(scores)
-    sizes = sorted(matrices_sizes.keys())
+            medians_per_size.append(median(scores))
+        medians_per_repeats[r] = medians_per_size
     return sizes, medians_per_repeats
 
 def compare_algorithms(matrices_sizes, rrnn_k, rrnn_repeats):
@@ -143,14 +142,12 @@ def compare_algorithms(matrices_sizes, rrnn_k, rrnn_repeats):
         per_algo_score = {algo: [] for algo in algorithms}
 
         for mat in matrices:
-            # NN
             wall, cpu, res = time_function(nearest_neighbor, mat, 0)
             tour, cost = res
             per_algo_wall['NN'].append(wall)
             per_algo_cpu['NN'].append(cpu)
             per_algo_score['NN'].append(cost)
 
-            # NN + 2opt
             wall, cpu, res = time_function(nearest_neighbor, mat, 0)
             tour, _ = res
             wall2, cpu2, res2 = time_function(two_opt, mat, tour)
@@ -158,7 +155,6 @@ def compare_algorithms(matrices_sizes, rrnn_k, rrnn_repeats):
             per_algo_cpu['NN2'].append(cpu + cpu2)
             per_algo_score['NN2'].append(res2[1])
 
-            # RRNN + 2opt
             wall, cpu, res = time_function(rrnn_with_2opt, mat, rrnn_k, rrnn_repeats)
             tour, cost = res
             per_algo_wall['RRNN2'].append(wall)
@@ -173,115 +169,122 @@ def compare_algorithms(matrices_sizes, rrnn_k, rrnn_repeats):
 
     return stats
 
-# -----------------------
-# Plotting helpers
-# -----------------------
+####################################### Helpers
 
-def plot_hyperparam_k(sizes, medians_per_k, output_file="hyperparam_k.png"):
+def plot_hyperparam_k(sizes, medians_per_k):
     plt.figure(figsize=(10,6))
     for k, medians in sorted(medians_per_k.items()):
-        plt.plot(sizes, [medians]*len(sizes), marker='o', label=f'k={k}')
+        plt.plot(sizes, medians, marker='o', label=f'k={k}')
     plt.xlabel("Number of Cities")
-    plt.ylabel("Median Score (distance)")
-    plt.title("RRNN: Median Score vs Problem Size for different k (num_repeats fixed)")
+    plt.ylabel("Median Tour Cost")
+    plt.title("RRNN: Median Tour Cost vs Problem Size for different k")
     plt.xticks(sizes)
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(output_file)
+    plt.savefig("experiment1-images/hyperparam_k.png")
     plt.close()
-    print(f"Saved: {output_file}")
+    print("Saved experiment1-images/hyperparam_k.png")
 
-def plot_hyperparam_repeats(sizes, medians_per_repeats, output_file="hyperparam_repeats.png"):
+def plot_hyperparam_repeats(sizes, medians_per_repeats):
     plt.figure(figsize=(10,6))
     for r, medians in sorted(medians_per_repeats.items()):
-        plt.plot(sizes, [medians]*len(sizes), marker='o', label=f'repeats={r}')
+        plt.plot(sizes, medians, marker='o', label=f'repeats={r}')
     plt.xlabel("Number of Cities")
-    plt.ylabel("Median Score (distance)")
-    plt.title("RRNN: Median Score vs Problem Size for different num_repeats (k fixed)")
+    plt.ylabel("Median Tour Cost")
+    plt.title("RRNN: Median Tour Cost vs Problem Size for different num_repeats")
     plt.xticks(sizes)
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(output_file)
+    plt.savefig("experiment1-images/hyperparam_repeats.png")
     plt.close()
-    print(f"Saved: {output_file}")
+    print("Saved experiment1-images/hyperparam_repeats.png")
 
-def plot_comparison(stats, output_file="comparison_plots.png"):
+def plot_comparison_separate(stats):
     sizes = stats['NN']['sizes']
     x = sizes
+    output_prefix="experiment1-images/comparison"
 
-    plt.figure(figsize=(16,12))
-
-    # Wall time (ns)
-    plt.subplot(3,1,1)
+    # Wall time
+    plt.figure(figsize=(8,6))
     plt.plot(x, np.array(stats['NN']['median_wall_ns'])/1e9, marker='o', label='NN')
     plt.plot(x, np.array(stats['NN2']['median_wall_ns'])/1e9, marker='s', label='NN+2opt')
     plt.plot(x, np.array(stats['RRNN2']['median_wall_ns'])/1e9, marker='^', label='RRNN+2opt')
+    plt.xlabel("Number of Cities")
     plt.ylabel("Median Wall Time (s)")
     plt.title("Median Wall Time vs Number of Cities")
     plt.xticks(x)
     plt.legend()
     plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"{output_prefix}_wall_time.png")
+    plt.close()
+    print(f"Saved: {output_prefix}_wall_time.png")
 
-    # CPU time (ns)
-    plt.subplot(3,1,2)
+    # CPU time
+    plt.figure(figsize=(8,6))
     plt.plot(x, np.array(stats['NN']['median_cpu_ns'])/1e9, marker='o', label='NN')
     plt.plot(x, np.array(stats['NN2']['median_cpu_ns'])/1e9, marker='s', label='NN+2opt')
     plt.plot(x, np.array(stats['RRNN2']['median_cpu_ns'])/1e9, marker='^', label='RRNN+2opt')
+    plt.xlabel("Number of Cities")
     plt.ylabel("Median CPU Time (s)")
     plt.title("Median CPU Time vs Number of Cities")
     plt.xticks(x)
     plt.legend()
     plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"{output_prefix}_cpu_time.png")
+    plt.close()
+    print(f"Saved: {output_prefix}_cpu_time.png")
 
-    # Score
-    plt.subplot(3,1,3)
+    # Tour cost
+    plt.figure(figsize=(8,6))
     plt.plot(x, stats['NN']['median_score'], marker='o', label='NN')
     plt.plot(x, stats['NN2']['median_score'], marker='s', label='NN+2opt')
     plt.plot(x, stats['RRNN2']['median_score'], marker='^', label='RRNN+2opt')
-    plt.ylabel("Median Tour Cost (distance)")
     plt.xlabel("Number of Cities")
+    plt.ylabel("Median Tour Cost (distance)")
     plt.title("Median Tour Cost vs Number of Cities")
     plt.xticks(x)
     plt.legend()
     plt.grid(True)
-
     plt.tight_layout()
-    plt.savefig(output_file)
+    plt.savefig(f"{output_prefix}_tour_cost.png")
     plt.close()
-    print(f"Saved: {output_file}")
+    print(f"Saved: {output_prefix}_tour_cost.png")
 
-# -----------------------
-# Main Experiment
-# -----------------------
 
-random.seed(0)
-np.random.seed(0)
+####################################### Main Section
 
-print("Loading matrices...")
-matrices_sizes = {}
-for a in [5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50]:
-    matrices = []
-    for b in range(4):
-        MAT = np.loadtxt(f"test-data/{a}_random_adj_mat_{b}.txt")
-        matrices.append(MAT)
-    matrices_sizes[a] = matrices
+if __name__ == "__main__":
 
-print("\nHyperparameter tuning...")
-sizes_k, medians_per_k = hyperparameter_sweep_k(matrices_sizes)
-plot_hyperparam_k(sizes_k, medians_per_k, output_file="experiment1-images/hyperparam_k.png")
+    random.seed(0)
+    np.random.seed(0)
 
-sizes_r, medians_per_repeats = hyperparameter_sweep_num_repeats(matrices_sizes)
-plot_hyperparam_repeats(sizes_r, medians_per_repeats, output_file="experiment1-images/hyperparam_repeats.png")
+    print("Loading matrices...")
+    matrices_sizes = {}
+    for a in [5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50]:
+        matrices = []
+        for b in range(4):
+            MAT = np.loadtxt(f"test-data/{a}_random_adj_mat_{b}.txt")
+            matrices.append(MAT)
+        matrices_sizes[a] = matrices
 
-# Pick best hyperparameters
-best_k = min(medians_per_k, key=lambda kk: medians_per_k[kk])
-best_r = min(medians_per_repeats, key=lambda rr: medians_per_repeats[rr])
+    print("\nHyperparameter tuning...")
+    sizes_k, medians_per_k = hyperparameter_sweep_k(matrices_sizes)
+    plot_hyperparam_k(sizes_k, medians_per_k)
 
-print(f"Best k (by median): {best_k}")
-print(f"Best num_repeats (by median): {best_r}")
+    sizes_r, medians_per_repeats = hyperparameter_sweep_num_repeats(matrices_sizes)
+    plot_hyperparam_repeats(sizes_r, medians_per_repeats)
 
-print("\nRunning algorithm comparison...")
-stats = compare_algorithms(matrices_sizes, rrnn_k=best_k, rrnn_repeats=best_r)
-plot_comparison(stats, output_file="experiment1-images/comparison_plots.png")
+    # Hyperparameters type
+    best_k = min(medians_per_k, key=lambda kk: medians_per_k[kk])
+    best_r = min(medians_per_repeats, key=lambda rr: medians_per_repeats[rr])
+
+    print("\nComparing algs")
+    stats = compare_algorithms(matrices_sizes, rrnn_k=best_k, rrnn_repeats=best_r)
+    plot_comparison_separate(stats)
+
+    print(f"Best median k: {best_k}")
+    print(f"Best median num_repeats: {best_r}")
